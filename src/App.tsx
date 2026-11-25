@@ -240,9 +240,9 @@ function AutoFitNoun({ text }: { text: string }) {
     const element = ref.current;
     if (!element) return;
     const fit = () => {
-      let size = 52;
+      let size = 46;
       element.style.fontSize = `${size}px`;
-      while (element.scrollWidth > element.clientWidth && size > 26) {
+      while (element.scrollWidth > element.clientWidth && size > 24) {
         size -= 1;
         element.style.fontSize = `${size}px`;
       }
