@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { filterVocabulary, vocabulary } from './data/vocabulary';
 import { accuracy, applyAnswer, isMastered, needsPractice, reinforcementConfig, selectNextNoun } from './learning';
 import { defaultSettings, downloadBackup, exportData, getAllProgress, getSettings, importData, resetData, saveAnswer, saveSettings } from './storage';
@@ -164,7 +164,7 @@ function Practice({ current, selected, level, onAnswer, onNext, focusMistakes, s
     {focusMistakes && <button className="text-button" onClick={stopMistakes}>Exit mistake practice</button>}
     <article className={`flashcard ${selected ? correct ? 'answered correct' : 'answered incorrect' : ''}`} aria-live="polite">
       <p className="card-kicker">GERMAN NOUN · {current.level}</p>
-      <h2>{current.noun}</h2>
+      <AutoFitNoun text={current.noun} />
       <div className="article-grid">
         {articles.map((article) => {
           const state = selected && article === current.article ? 'correct-choice' : selected === article ? 'wrong-choice' : '';
@@ -232,6 +232,28 @@ function SettingsView({ settings, updateSettings, onExport, onImport, onReset, n
 function NavButton({ active, label, icon, onClick }: { active: boolean; label: string; icon: 'cards' | 'chart' | 'gear'; onClick: () => void }) {
   const symbols = { cards: '▱', chart: '▥', gear: '⚙' };
   return <button className={active ? 'active' : ''} onClick={onClick} aria-current={active ? 'page' : undefined}><span>{symbols[icon]}</span>{label}</button>;
+}
+function AutoFitNoun({ text }: { text: string }) {
+  const ref = useRef<HTMLHeadingElement>(null);
+
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    const fit = () => {
+      let size = 52;
+      element.style.fontSize = `${size}px`;
+      while (element.scrollWidth > element.clientWidth && size > 26) {
+        size -= 1;
+        element.style.fontSize = `${size}px`;
+      }
+    };
+    fit();
+    const observer = new ResizeObserver(fit);
+    if (element.parentElement) observer.observe(element.parentElement);
+    return () => observer.disconnect();
+  }, [text]);
+
+  return <h2 ref={ref} className="noun-text" title={text}>{text}</h2>;
 }
 function Stat({ value, label }: { value: number | string; label: string }) { return <div className="stat"><strong>{value}</strong><span>{label}</span></div>; }
 function ProgressBar({ label, value, suffix = `${value}%` }: { label: string; value: number; suffix?: string }) { return <div className="progress-row"><div><strong>{label}</strong><span>{suffix}</span></div><div className="track"><span style={{ width: `${value}%` }} /></div></div>; }
