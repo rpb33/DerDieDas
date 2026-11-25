@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { vocabulary } from './data/vocabulary';
-import { applyAnswer, isMastered, selectNextNoun } from './learning';
+import { applyAnswer, isMastered, reinforcementConfig, selectNextNoun } from './learning';
 import type { NounProgress } from './types';
 
 describe('answer handling and review scheduling', () => {
@@ -28,6 +28,17 @@ describe('answer handling and review scheduling', () => {
     const pool = vocabulary.slice(0, 4);
     const weak: NounProgress = { id: pool[2].id, shown: 2, correct: 0, incorrect: 2, consecutiveCorrect: 0, lastPracticed: now.toISOString(), nextDue: now.toISOString() };
     expect(selectNextNoun(pool, [weak], { now, random: () => 0.1 })?.id).toBe(weak.id);
+  });
+
+  it('changes the weak-word share and retry spacing by reinforcement level', () => {
+    const pool = vocabulary.slice(0, 3);
+    const weak: NounProgress = { id: pool[0].id, shown: 2, correct: 0, incorrect: 2, consecutiveCorrect: 0, lastPracticed: now.toISOString(), nextDue: now.toISOString() };
+    const due: NounProgress = { id: pool[1].id, shown: 1, correct: 1, incorrect: 0, consecutiveCorrect: 1, lastPracticed: now.toISOString(), nextDue: new Date(now.getTime() - 1).toISOString() };
+    expect(selectNextNoun(pool, [weak, due], { now, reinforcement: 'low', random: () => 0.2 })?.id).toBe(due.id);
+    expect(selectNextNoun(pool, [weak, due], { now, reinforcement: 'high', random: () => 0.2 })?.id).toBe(weak.id);
+    expect(reinforcementConfig.low.retryGap).toBe(10);
+    expect(reinforcementConfig.balanced.retryGap).toBe(6);
+    expect(reinforcementConfig.high.retryGap).toBe(3);
   });
 
   it('does not immediately repeat the recent noun when alternatives exist', () => {

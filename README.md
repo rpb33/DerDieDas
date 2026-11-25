@@ -55,7 +55,7 @@ Answers, per-noun review schedules, mistake counts, and settings are stored only
 
 ## Learning logic
 
-Normal selection aims for roughly 50% weak words, 30% due reviews, and 20% new words, gracefully falling back when a category is empty. A wrong answer is also queued to return after at least three intervening answers. Correct streaks schedule reviews after 1, 3, 7, 21, then 45 days. A noun is mastered only after at least three consecutive correct answers and 80% overall accuracy.
+The reinforcement setting controls the normal-practice mix and the delay before a missed word returns: **Low** favors variety and waits about 10 other answers, **Balanced** uses a moderate weak-word share and waits about 6, and **High** emphasizes weak words and waits about 3. Selection gracefully falls back when a category is empty. Correct streaks schedule reviews after 1, 3, 7, 21, then 45 days. A noun is mastered only after at least three consecutive correct answers and 80% overall accuracy.
 
 ## Add vocabulary
 

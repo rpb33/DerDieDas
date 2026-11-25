@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { filterVocabulary, vocabulary } from './data/vocabulary';
-import { accuracy, applyAnswer, isMastered, needsPractice, selectNextNoun } from './learning';
+import { accuracy, applyAnswer, isMastered, needsPractice, reinforcementConfig, selectNextNoun } from './learning';
 import { defaultSettings, downloadBackup, exportData, getAllProgress, getSettings, importData, resetData, saveAnswer, saveSettings } from './storage';
-import { LEVELS, type AnswerRecord, type Article, type Level, type Noun, type NounProgress, type Settings, type Theme, type VocabularyMode } from './types';
+import { LEVELS, type AnswerRecord, type Article, type Level, type Noun, type NounProgress, type Settings, type Theme } from './types';
 
 type Tab = 'practice' | 'progress' | 'settings';
 const articles: Article[] = ['der', 'die', 'das'];
@@ -38,14 +38,15 @@ export default function App() {
 
   useEffect(() => {
     if (!ready || !settings.onboardingComplete) return;
-    setCurrent(selectNextNoun(pool, progress, { recentIds: recent.slice(-1), focusMistakes }));
+    setCurrent(selectNextNoun(pool, progress, { recentIds: recent.slice(-1), focusMistakes, reinforcement: settings.reinforcement }));
     setSelected(undefined);
-  // The level or mode changes the pool; progress is intentionally not a dependency here.
+  // Practice settings change the selection; progress is intentionally not a dependency here.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, settings.level, settings.mode, settings.onboardingComplete, focusMistakes]);
+  }, [ready, settings.level, settings.mode, settings.reinforcement, settings.onboardingComplete, focusMistakes]);
 
   const updateSettings = async (patch: Partial<Settings>) => {
     const next = { ...settings, ...patch };
+    if (patch.reinforcement && patch.reinforcement !== settings.reinforcement) retryQueue.current = [];
     setSettings(next);
     await saveSettings(next);
   };
@@ -58,7 +59,10 @@ export default function App() {
     const record: AnswerRecord = { nounId: current.id, selected: article, correct: article === current.article, practicedAt: updated.lastPracticed };
     setProgress((items) => [...items.filter((item) => item.id !== current.id), updated]);
     setSessionCount((count) => count + 1);
-    if (!record.correct) retryQueue.current.push({ id: current.id, dueAt: sessionCount + 4 });
+    if (!record.correct) {
+      const retryGap = reinforcementConfig[settings.reinforcement].retryGap;
+      retryQueue.current.push({ id: current.id, dueAt: sessionCount + retryGap + 1 });
+    }
     await saveAnswer(record, updated);
   };
 
@@ -72,7 +76,7 @@ export default function App() {
       const [retry] = retryQueue.current.splice(dueRetryIndex, 1);
       next = pool.find((noun) => noun.id === retry.id && noun.id !== current.id);
     }
-    next ??= selectNextNoun(pool, progress, { recentIds: nextRecent, focusMistakes });
+    next ??= selectNextNoun(pool, progress, { recentIds: nextRecent, focusMistakes, reinforcement: settings.reinforcement });
     setCurrent(next);
     setSelected(undefined);
   };
@@ -213,6 +217,11 @@ function SettingsView({ settings, updateSettings, onExport, onImport, onReset, n
     <div className="page-heading"><p className="eyebrow">MAKE IT YOURS</p><h1>Settings</h1></div>
     <section className="panel settings-panel"><h2>Practice</h2><label>CEFR level<select value={settings.level} onChange={(e) => updateSettings({ level: e.target.value as Level })}>{LEVELS.map((level) => <option key={level} value={level}>{level} — {levelNames[level]}</option>)}</select></label>
       <fieldset><legend>Vocabulary range</legend><Choice checked={settings.mode === 'level'} title="Selected level only" detail={`Only ${settings.level} words`} onChange={() => updateSettings({ mode: 'level' })} /><Choice checked={settings.mode === 'up-to'} title="Up to selected level" detail={`All words from A1 through ${settings.level}`} onChange={() => updateSettings({ mode: 'up-to' })} /></fieldset>
+      <fieldset><legend>Reinforcement level</legend><p className="field-help">Controls how often missed words return during normal practice.</p>
+        <Choice checked={settings.reinforcement === 'low'} title="Low" detail="More variety · repeat after about 10 other words" onChange={() => updateSettings({ reinforcement: 'low' })} />
+        <Choice checked={settings.reinforcement === 'balanced'} title="Balanced" detail="A steady mix · repeat after about 6 other words" onChange={() => updateSettings({ reinforcement: 'balanced' })} />
+        <Choice checked={settings.reinforcement === 'high'} title="High" detail="Frequent correction · repeat after about 3 other words" onChange={() => updateSettings({ reinforcement: 'high' })} />
+      </fieldset>
     </section>
     <section className="panel settings-panel"><h2>Appearance</h2><div className="segmented">{(['system','light','dark'] as Theme[]).map((theme) => <button key={theme} className={settings.theme === theme ? 'active' : ''} onClick={() => updateSettings({ theme })}>{theme[0].toUpperCase() + theme.slice(1)}</button>)}</div></section>
     <section className="panel settings-panel"><h2>Your data</h2><p>Everything stays in this browser. Export a backup before clearing browser or app data.</p><div className="button-row"><button className="secondary" onClick={onExport}>Export progress</button><button className="secondary" onClick={onImport}>Import progress</button></div>{notice && <p className="notice" role="status">{notice}</p>}<button className="danger-button" onClick={onReset}>Reset learning progress</button></section>

@@ -4,7 +4,7 @@ const DB_NAME = 'der-die-das';
 const DB_VERSION = 1;
 const SETTINGS_KEY = 'settings';
 
-export const defaultSettings: Settings = { level: 'A1', mode: 'level', theme: 'system', onboardingComplete: false };
+export const defaultSettings: Settings = { level: 'A1', mode: 'level', reinforcement: 'balanced', theme: 'system', onboardingComplete: false };
 
 function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {

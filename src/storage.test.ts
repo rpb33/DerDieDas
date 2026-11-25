@@ -30,4 +30,9 @@ describe('local progress persistence and backups', () => {
   it('rejects malformed imports', async () => {
     await expect(importData({ version: 9 })).rejects.toThrow(/backup/i);
   });
+
+  it('adds the balanced reinforcement default to older saved settings', async () => {
+    await saveSettings({ level: 'A2', mode: 'level', theme: 'light', onboardingComplete: true } as never);
+    expect((await getSettings()).reinforcement).toBe('balanced');
+  });
 });

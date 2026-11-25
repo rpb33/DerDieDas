@@ -1,4 +1,4 @@
-import type { Article, Noun, NounProgress } from './types';
+import type { Article, Noun, NounProgress, ReinforcementLevel } from './types';
 
 const DAY = 86_400_000;
 
@@ -33,8 +33,15 @@ export interface SelectionOptions {
   now?: Date;
   recentIds?: string[];
   focusMistakes?: boolean;
+  reinforcement?: ReinforcementLevel;
   random?: () => number;
 }
+
+export const reinforcementConfig: Record<ReinforcementLevel, { weakShare: number; dueShare: number; retryGap: number }> = {
+  low: { weakShare: 0.15, dueShare: 0.35, retryGap: 10 },
+  balanced: { weakShare: 0.35, dueShare: 0.35, retryGap: 6 },
+  high: { weakShare: 0.55, dueShare: 0.30, retryGap: 3 },
+};
 
 const choose = <T,>(items: T[], random: () => number): T | undefined =>
   items.length ? items[Math.floor(random() * items.length)] : undefined;
@@ -47,6 +54,7 @@ export function selectNextNoun(
   if (!nouns.length) return undefined;
   const now = (options.now ?? new Date()).getTime();
   const random = options.random ?? Math.random;
+  const mix = reinforcementConfig[options.reinforcement ?? 'balanced'];
   const progress = new Map(progressList.map((item) => [item.id, item]));
   const recent = new Set(options.recentIds ?? []);
   const eligible = nouns.filter((noun) => !recent.has(noun.id));
@@ -63,7 +71,11 @@ export function selectNextNoun(
   const fresh = pool.filter((noun) => !progress.has(noun.id));
   const practiced = pool.filter((noun) => progress.has(noun.id));
   const roll = random();
-  const order = roll < 0.5 ? [weak, due, fresh, practiced] : roll < 0.8 ? [due, weak, fresh, practiced] : [fresh, weak, due, practiced];
+  const order = roll < mix.weakShare
+    ? [weak, due, fresh, practiced]
+    : roll < mix.weakShare + mix.dueShare
+      ? [due, fresh, weak, practiced]
+      : [fresh, due, weak, practiced];
   for (const category of order) {
     const item = choose(category, random);
     if (item) return item;

@@ -3,6 +3,7 @@ export type Level = (typeof LEVELS)[number];
 export type Article = 'der' | 'die' | 'das';
 export type VocabularyMode = 'level' | 'up-to';
 export type Theme = 'system' | 'light' | 'dark';
+export type ReinforcementLevel = 'low' | 'balanced' | 'high';
 
 export interface Noun {
   id: string;
@@ -34,6 +35,7 @@ export interface AnswerRecord {
 export interface Settings {
   level: Level;
   mode: VocabularyMode;
+  reinforcement: ReinforcementLevel;
   theme: Theme;
   onboardingComplete: boolean;
 }
